@@ -14,13 +14,22 @@ move_steps = 20 #frames required for each movement
 beginning_mov_parcel = 3 #size (1/x %) of the beginning parcel in which a movement it can still be cancelled
 
 class Board:
-    def __init__(self, rows, cols, char = (0, 0)):
-        self.size = (rows, cols)
+    def __init__(self, cols, rows, field = None, char = (0, 0)):
+        self.size = (cols, rows)
+
+        if field is None: #field not provided, initializes new empty field
+            field = [[None for x in range(0, cols)] for y in range(0, rows)]
+        else: #field provided, checks if it's valid
+            if len(field) != rows or any([len(row) != cols for row in field]):
+                raise Exception("Invalid field.")
+        self.field = field
+
         self.char = char
 
     # Check if the (x,y) position can be occupied by the character
     def can_move(self, x, y):
-        return 0 <= x < self.size[0] and 0 <= y < self.size[1]
+        return (0 <= x < self.size[0] and 0 <= y < self.size[1] and
+                self.field[y][x] == 0)
 
     # Check if the position in the given direction can be occupied by the character
     def can_move_dir(self, direction):
@@ -52,13 +61,16 @@ class Board:
             (start_y + cel_size*self.size[1]) > screen.get_size()[1]):
            raise Exception("Board can't fit window screen.")
 
-        # Draws grid background
-        pg.draw.rect(screen, (30, 0, 0),
-            pg.Rect(start_x, start_y, self.size[0]*cel_size, self.size[1]*cel_size))
+        # Draws grid background, only on transponable cells
+        #pg.draw.rect(screen, (30, 0, 0),
+        #    pg.Rect(start_x, start_y, self.size[0]*cel_size, self.size[1]*cel_size))
         for g_x in range(0, self.size[0]):
             for g_y in range(0, self.size[1]):
-                if (g_x+g_y)%2 == 0:
-                    pg.draw.rect(screen, (80, 0, 0),
+                if self.field[g_y][g_x] == 0:
+                    color = (60, 0, 0)
+                    if (g_x+g_y)%2 == 0:
+                        color = (100, 0, 0)
+                    pg.draw.rect(screen, color,
                         pg.Rect(start_x + g_x*cel_size, start_y + g_y*cel_size,
                                 cel_size, cel_size))
 
@@ -76,10 +88,19 @@ class Board:
                 dx = + distance_covered
         cx = start_x + self.char[0]*cel_size + dx
         cy = start_y + self.char[1]*cel_size + dy
-        pg.draw.rect(screen, (255, 0, 0), pg.Rect(cx, cy, cel_size, cel_size))
+        r = int(cel_size/2)
+        pg.draw.circle(screen, (255, 0, 0), (cx+r, cy+r), r)
+        #pg.draw.rect(screen, (255, 0, 0), pg.Rect(cx, cy, cel_size, cel_size))
 
+field1 = [[0, 0, 0],
+          [0, 1, 1],
+          [0, 1, 1]]
 
-boards = [Board(20, 20), Board(20, 20, (5, 5))]
+field2 = [[0, 1, 1],
+          [0, 1, 1],
+          [0, 0, 0]]
+
+boards = [Board(3, 3, field1, (0,2)), Board(3, 3, field2, (2,2))]
 
 # Main loop
 while not done:
