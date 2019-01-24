@@ -29,7 +29,7 @@ class Board:
     # Check if the (x,y) position can be occupied by the character
     def can_move(self, x, y):
         return (0 <= x < self.size[0] and 0 <= y < self.size[1] and
-                self.field[y][x] == 0)
+                self.field[y][x] <= 2)
 
     # Check if the position in the given direction can be occupied by the character
     def can_move_dir(self, direction):
@@ -66,7 +66,7 @@ class Board:
         #    pg.Rect(start_x, start_y, self.size[0]*cel_size, self.size[1]*cel_size))
         for g_x in range(0, self.size[0]):
             for g_y in range(0, self.size[1]):
-                if self.field[g_y][g_x] == 0:
+                if self.field[g_y][g_x] <= 2:
                     color = (60, 0, 0)
                     if (g_x+g_y)%2 == 0:
                         color = (100, 0, 0)
@@ -92,13 +92,13 @@ class Board:
         pg.draw.circle(screen, (255, 0, 0), (cx+r, cy+r), r)
         #pg.draw.rect(screen, (255, 0, 0), pg.Rect(cx, cy, cel_size, cel_size))
 
-field1 = [[0, 0, 0],
-          [0, 1, 1],
-          [0, 1, 1]]
+field1 = [[0, 0, 2],
+          [0, 3, 3],
+          [1, 3, 3]]
 
-field2 = [[0, 1, 1],
-          [0, 1, 1],
-          [0, 0, 0]]
+field2 = [[2, 3, 3],
+          [0, 3, 3],
+          [0, 0, 1]]
 
 boards = [Board(3, 3, field1, (0,2)), Board(3, 3, field2, (2,2))]
 
