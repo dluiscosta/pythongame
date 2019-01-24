@@ -4,6 +4,7 @@ import pygame as pg
 grid_size = (20, 15)
 cel_size = 40
 move_steps = 20 #frames required for each movement
+beginning_mov_parcel = 3 #size (1/x %) of the beginning parcel in which a movement it can still be cancelled
 
 # System essentials
 pg.init()
@@ -34,7 +35,7 @@ while not done:
     # Starts a movement
     # gives precedence to the most recently pressed key.
     if (not moving or
-        (moving and moving[0] != most_recent_mov_key and moving[1][0] < move_steps/4)): #can interrupt movements that have just started
+        (moving and moving[0] != most_recent_mov_key and moving[1][0] < move_steps/beginning_mov_parcel)): #can interrupt movements that have just started
         pressed = pg.key.get_pressed()
 
         #moving = (direction, steps taken)
@@ -58,13 +59,19 @@ while not done:
             d_x, d_y = (x*cel_size, y*cel_size) #recalc display position
             moving = False
         else: #continues
-            moving[1][0] += 1 #takes one more step in defined direction
-            # Calculates display position
-            distance_covered = int((cel_size/move_steps) * moving[1][0])
-            if moving[0] == pg.K_UP: d_y = y*cel_size - distance_covered
-            elif moving[0] == pg.K_DOWN: d_y = y*cel_size + distance_covered
-            elif moving[0] == pg.K_LEFT: d_x = x*cel_size - distance_covered
-            elif moving[0] == pg.K_RIGHT: d_x = x*cel_size + distance_covered
+            if moving[1][0] < move_steps/beginning_mov_parcel:
+                #if it's in the beginning, checks if key still pressed
+                pressed = pg.key.get_pressed()
+                if not pressed[moving[0]]:
+                    moving = False # cancels movement
+            if moving:
+                moving[1][0] += 1 #takes one more step in defined direction
+                # Calculates display position
+                distance_covered = int((cel_size/move_steps) * moving[1][0])
+                if moving[0] == pg.K_UP: d_y = y*cel_size - distance_covered
+                elif moving[0] == pg.K_DOWN: d_y = y*cel_size + distance_covered
+                elif moving[0] == pg.K_LEFT: d_x = x*cel_size - distance_covered
+                elif moving[0] == pg.K_RIGHT: d_x = x*cel_size + distance_covered
 
     # Draws grid background
     screen.fill((0, 0, 0))
