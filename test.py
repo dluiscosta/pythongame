@@ -17,7 +17,9 @@ screen = pg.display.set_mode(
 x, y = (10, 10) #initial position on the grid system
 moving = False #character starts idle
 
+# Movement auxiliars
 most_recent_mov_key = None
+first_mov = False
 def can_move(x, y):
     return 0 <= x < grid_size[0] and 0 <= y < grid_size[1]
 
@@ -27,8 +29,8 @@ while not done:
         if event.type == pg.QUIT: #close screen command
             done = True
         if event.type == pg.KEYDOWN and event.key in [pg.K_UP, pg.K_DOWN, pg.K_LEFT, pg.K_RIGHT]:
-            most_recent_mov_key = event.key;
-
+            most_recent_mov_key = event.key
+            first_mov = True
 
     d_x, d_y = (x*cel_size, y*cel_size) #display position, can be between cells during movement
 
@@ -57,9 +59,10 @@ while not done:
             elif moving[0] == pg.K_LEFT: x -= 1
             elif moving[0] == pg.K_RIGHT: x += 1
             d_x, d_y = (x*cel_size, y*cel_size) #recalc display position
+            first_mov = False
             moving = False
         else: #continues
-            if moving[1][0] < move_steps/beginning_mov_parcel:
+            if not first_mov and moving[1][0] < move_steps/beginning_mov_parcel:
                 #if it's in the beginning, checks if key still pressed
                 pressed = pg.key.get_pressed()
                 if not pressed[moving[0]]:
