@@ -17,4 +17,4 @@ Then, running the test.py file runs the game.
 
 ## Copyright and License
 
-Copyright 2019 Daniel L. Costa. Code released under the MIT license.
+Copyright 2019 Daniel L. Costa. Code released under the [MIT](https://github.com/dluiscosta/pythongame/blob/master/LICENSE) license.
