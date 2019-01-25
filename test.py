@@ -14,7 +14,7 @@ move_steps = 20 #frames required for each movement
 beginning_mov_parcel = 3 #size (1/x %) of the beginning parcel in which a movement it can still be cancelled
 
 class Board:
-    def __init__(self, cols, rows, field = None, char = (0, 0)):
+    def __init__(self, cols, rows, field = None, char = None, obj = None):
         self.size = (cols, rows)
 
         if field is None: #field not provided, initializes new empty field
@@ -22,9 +22,60 @@ class Board:
         else: #field provided, checks if it's valid
             if len(field) != rows or any([len(row) != cols for row in field]):
                 raise Exception("Invalid field.")
+
+        # Looks for character in field
+        char_field = None
+        for x in range(0, cols):
+            for y in range(0, rows):
+                if field[y][x] == 1: #found character
+                    field[y][x] = 0
+                    if char_field is None:
+                        char_field = (x, y)
+                    else:
+                        raise Exception("More than one character were specified at field.")
+
+        # Checks validity of provided character position
+        if char is not None:
+            if (not isinstance(char, tuple) or len(char) != 2 or
+                not (0 <= char[0] < cols and 0 <= char[1] < rows)):
+                raise Exception("Invalid character position.")
+            if field[char[0]][char[1]] >= 3:
+                raise Exception("Character placed in obstacle.")
+
+        if char_field is None and char is None:
+            raise Exception("No character specified.")
+        elif char_field is not None and char is not None and char_field != char:
+            raise Exception("Different characters were specified.")
+        self.char = char if char is not None else char_field
+
+        # Looks for objective in field
+        obj_field = None
+        for x in range(0, cols):
+            for y in range(0, rows):
+                if field[y][x] == 2: #found objective
+                    field[y][x] = 0
+                    if obj_field is None:
+                        obj_field = (x, y)
+                    else:
+                        raise Exception("More than one objective were specified at field.")
+
+        # Checks validity of provided objective position
+        if obj is not None:
+            if (not isinstance(obj, tuple) or len(obj) != 2 or
+                not (0 <= obj[0] < cols and 0 <= obj[1] < rows)):
+                raise Exception("Invalid objective position.")
+            if field[obj[0]][obj[1]] >= 3:
+                raise Exception("# OPTIMIZE: bjective placed in obstacle.")
+
+        if obj_field is None and obj is None:
+            raise Exception("No objective specified.")
+        elif obj_field is not None and obj is not None and obj_field != obj:
+            raise Exception("Different objectives were specified.")
+        self.obj = obj if obj is not None else obj_field
+
         self.field = field
 
-        self.char = char
+
 
     # Check if the (x,y) position can be occupied by the character
     def can_move(self, x, y):
@@ -74,6 +125,12 @@ class Board:
                         pg.Rect(start_x + g_x*cel_size, start_y + g_y*cel_size,
                                 cel_size, cel_size))
 
+        # Draws objective
+        ox = start_x + self.obj[0]*cel_size
+        oy = start_y + self.obj[1]*cel_size
+        pg.draw.rect(screen, (0, 255, 0), pg.Rect(ox, oy, cel_size, cel_size))
+
+
         # Draws "character"
         dx, dy = (0, 0) #delta from current movement
         if moving:
@@ -91,6 +148,7 @@ class Board:
         r = int(cel_size/2)
         pg.draw.circle(screen, (255, 0, 0), (cx+r, cy+r), r)
         #pg.draw.rect(screen, (255, 0, 0), pg.Rect(cx, cy, cel_size, cel_size))
+
 
 field1 = [[0, 0, 2],
           [0, 3, 3],
