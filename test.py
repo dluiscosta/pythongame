@@ -65,7 +65,7 @@ class Board:
                 not (0 <= obj[0] < cols and 0 <= obj[1] < rows)):
                 raise Exception("Invalid objective position.")
             if field[obj[0]][obj[1]] >= 3:
-                raise Exception("# OPTIMIZE: bjective placed in obstacle.")
+                raise Exception("Objective placed in obstacle.")
 
         if obj_field is None and obj is None:
             raise Exception("No objective specified.")
@@ -76,11 +76,13 @@ class Board:
         self.field = field
 
 
+    # Check if the (x,y) position is inside field
+    def valid_pos(self, x, y):
+        return (0 <= x < self.size[0] and 0 <= y < self.size[1])
 
     # Check if the (x,y) position can be occupied by the character
     def can_move(self, x, y):
-        return (0 <= x < self.size[0] and 0 <= y < self.size[1] and
-                self.field[y][x] <= 2)
+        return (self.valid_pos(x, y) and self.field[y][x] <= 2)
 
     # Check if the position in the given direction can be occupied by the character
     def can_move_dir(self, direction):
@@ -106,24 +108,25 @@ class Board:
             self.char = new_pos
 
     # Draws the board and the character, idle or moving (if possible for this board)
-    def draw(self, start_x, start_y, cel_size, moving):
+    def draw(self, start_x, start_y, cel_size, moving, tileset):
         if (start_x < 0 or start_y < 0 or
             (start_x + cel_size*self.size[0]) > screen.get_size()[0] or
             (start_y + cel_size*self.size[1]) > screen.get_size()[1]):
            raise Exception("Board can't fit window screen.")
 
-        # Draws grid background, only on transponable cells
-        #pg.draw.rect(screen, (30, 0, 0),
-        #    pg.Rect(start_x, start_y, self.size[0]*cel_size, self.size[1]*cel_size))
-        for g_x in range(0, self.size[0]):
-            for g_y in range(0, self.size[1]):
-                if self.field[g_y][g_x] <= 2:
-                    color = (60, 0, 0)
-                    if (g_x+g_y)%2 == 0:
-                        color = (100, 0, 0)
-                    pg.draw.rect(screen, color,
-                        pg.Rect(start_x + g_x*cel_size, start_y + g_y*cel_size,
-                                cel_size, cel_size))
+        neighboorhood = [(-1, -1), (0, -1), (+1, -1), (+1, 0),
+                         (+1, +1), (0, +1), (-1, +1), (-1, 0)]
+
+        # Draws tiles
+        for t_x in range(0, self.size[0]):
+            for t_y in range(0, self.size[1]):
+                # Checks the tile type of the 8 neighboors, None if end of Board
+                neigh_pos = list(map(lambda dx_dy : (t_x + dx_dy[0], t_y + dx_dy[1]), neighboorhood))
+                neighboors = list(map(lambda pos: self.field[pos[1]][pos[0]] if self.valid_pos(*pos) else None, neigh_pos))
+
+                img = tileset[self.field[t_y][t_x]](neighboors) #acess the tileset, informing the neighboor tiles
+                screen.blit(img, (start_x + t_x*cel_size, start_y + t_y*cel_size)) #draws the tile
+
 
         # Draws objective
         ox = start_x + self.obj[0]*cel_size
@@ -208,8 +211,12 @@ while not done:
 
     # Draws screen and boards
     screen.fill((0, 0, 0))
-    boards[0].draw(50, 50, 20, moving)
-    boards[1].draw(550, 50, 20, moving)
+    tileset = {
+        3:lambda neighboors : pg.image.load('img/dungeon_tileset/wall_01.png'),
+        0:lambda neighboors : pg.image.load('img/dungeon_tileset/floor_01.png')
+    }
+    boards[0].draw(50, 50, 16, moving, tileset)
+    boards[1].draw(550, 50, 16, moving, tileset)
 
     pg.display.flip() #flips buffers, updating screen
     clock.tick(60) #waits for the time assigned for a frame
