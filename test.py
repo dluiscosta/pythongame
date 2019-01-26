@@ -182,8 +182,8 @@ while not done:
     # Draws screen and boards
     screen.fill((0, 0, 0))
     tileset = {
-         1: pg.image.load('img/dungeon_tileset/wall_01.png'),
-        -1: pg.image.load('img/dungeon_tileset/floor_01.png')
+         1: pg.image.load('img/dungeon_tileset/dungeon_001.png'),
+        -1: pg.image.load('img/dungeon_tileset/dungeon_022.png')
     }
     boards[0].draw(50, 50, 16, moving, tileset)
     boards[1].draw(550, 50, 16, moving, tileset)
