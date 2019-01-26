@@ -10,8 +10,9 @@ screen = pg.display.set_mode((1000, 500))
 moving = False #characters start idle
 most_recent_mov_key = None
 first_mov = False
-move_steps = 20 #frames required for each movement
+move_steps = 16 #frames required for each movement
 beginning_mov_parcel = 3 #size (1/x %) of the beginning parcel in which a movement it can still be cancelled
+moving_sprite_frames = 20 #during movement, the amount of frames that will exhibit the same image before using the next on the sprite
 
 class Board:
     def __init__(self, cols, rows, char, obj, field = None):
@@ -43,6 +44,9 @@ class Board:
         else:
             self.obj = obj
 
+        self.char_facing = pg.K_DOWN
+        self.been_moving = 0 #frames
+
     # Access field at given position
     def field_at(self, x, y):
         return self.field[y][x]
@@ -67,6 +71,10 @@ class Board:
             return self.can_move(self.char[0]+1, self.char[1])
         else:
             raise Exception("Invalid direction.")
+
+    # Returns an index following the order top-right-down-left
+    def dir_to_idx(self, direction):
+        return {pg.K_UP: 0, pg.K_RIGHT: 1, pg.K_DOWN: 2, pg.K_LEFT: 3}[direction]
 
     # Updates the character position, if possible
     def move_char(self, direction):
@@ -102,8 +110,9 @@ class Board:
 
         # Draws "character"
         dx, dy = (0, 0) #delta from current movement
-        img = char_sprite[2][0]
+        img = char_sprite[self.dir_to_idx(self.char_facing)][0]
         if moving:
+            self.char_facing = moving[0]
             distance_covered = int((cel_size/move_steps) * moving[1][0])
             if moving[0] == pg.K_UP and self.can_move(self.char[0], self.char[1]-1):
                 dy = - distance_covered
@@ -115,9 +124,13 @@ class Board:
                 dx = + distance_covered
 
             # Gets moving sprite
-            idx_dir = {pg.K_UP: 0, pg.K_RIGHT: 1, pg.K_DOWN: 2, pg.K_LEFT: 3}[moving[0]]
-            moving_frame = int((moving[1][0])/20)%len(char_sprite[idx_dir][1])
+            idx_dir = self.dir_to_idx(moving[0])
+            moving_frame = int(self.been_moving/moving_sprite_frames)%len(char_sprite[idx_dir][1])
             img = char_sprite[idx_dir][1][moving_frame]
+            self.been_moving += 1
+        else:
+            # Restarts moving frames counter
+            self.been_moving = 0
 
         c_x = start_x + self.char[0]*cel_size + dx
         c_y = start_y + self.char[1]*cel_size + dy
@@ -179,42 +192,48 @@ while not done:
             most_recent_mov_key = event.key
             first_mov = True
 
-    # Starts a movement
-    # gives precedence to the most recently pressed key.
-    if (not moving or
-        (moving and moving[0] != most_recent_mov_key and moving[1][0] < move_steps/beginning_mov_parcel)): #can interrupt movements that have just started
-        pressed = pg.key.get_pressed()
+    twice = 1 #executes again if ends not moving after first iteration
+    while twice == 1 or (twice == 2 and not moving):
+        twice += 1
 
-        #moving = (direction, steps taken)
-        if pressed[pg.K_UP] and most_recent_mov_key == pg.K_UP:
-            if any([board.can_move_dir(pg.K_UP) for board in boards]):
-                moving = (pg.K_UP, [0])
-        elif pressed[pg.K_DOWN] and most_recent_mov_key == pg.K_DOWN:
-            if any([board.can_move_dir(pg.K_DOWN) for board in boards]):
-                moving = (pg.K_DOWN, [0])
-        elif pressed[pg.K_LEFT] and most_recent_mov_key == pg.K_LEFT:
-            if any([board.can_move_dir(pg.K_LEFT) for board in boards]):
-                moving = (pg.K_LEFT, [0])
-        elif pressed[pg.K_RIGHT] and most_recent_mov_key == pg.K_RIGHT:
-            if any([board.can_move_dir(pg.K_RIGHT) for board in boards]):
-                moving = (pg.K_RIGHT, [0])
+        # Starts a movement
+        # gives precedence to the most recently pressed key.
+        if (not moving or
+            (moving and moving[0] != most_recent_mov_key and
+             moving[1][0] < move_steps/beginning_mov_parcel)):
+             #can interrupt movements that have just started
+            pressed = pg.key.get_pressed()
 
-    # Continues or finishes a movement
-    if moving:
-        if moving[1][0] == move_steps: #finishes
-            # Updates the characters positions
-            for board in boards:
-                board.move_char(moving[0])
-            first_mov = False
-            moving = False
-        else: #continues
-            if not first_mov and moving[1][0] < move_steps/beginning_mov_parcel:
-                #if it's in the beginning, checks if key still pressed
-                pressed = pg.key.get_pressed()
-                if not pressed[moving[0]]:
-                    moving = False # cancels movement
-            if moving:
-                moving[1][0] += 1 #takes one more step in defined direction
+            #moving = (direction, steps taken)
+            if pressed[pg.K_UP] and most_recent_mov_key == pg.K_UP:
+                if any([board.can_move_dir(pg.K_UP) for board in boards]):
+                    moving = (pg.K_UP, [0])
+            elif pressed[pg.K_DOWN] and most_recent_mov_key == pg.K_DOWN:
+                if any([board.can_move_dir(pg.K_DOWN) for board in boards]):
+                    moving = (pg.K_DOWN, [0])
+            elif pressed[pg.K_LEFT] and most_recent_mov_key == pg.K_LEFT:
+                if any([board.can_move_dir(pg.K_LEFT) for board in boards]):
+                    moving = (pg.K_LEFT, [0])
+            elif pressed[pg.K_RIGHT] and most_recent_mov_key == pg.K_RIGHT:
+                if any([board.can_move_dir(pg.K_RIGHT) for board in boards]):
+                    moving = (pg.K_RIGHT, [0])
+
+        # Continues or finishes a movement
+        if moving:
+            if moving[1][0] == move_steps: #finishes
+                # Updates the characters positions
+                for board in boards:
+                    board.move_char(moving[0])
+                first_mov = False
+                moving = False
+            else: #continues
+                if not first_mov and moving[1][0] < move_steps/beginning_mov_parcel:
+                    #if it's in the beginning, checks if key still pressed
+                    pressed = pg.key.get_pressed()
+                    if not pressed[moving[0]]:
+                        moving = False # cancels movement
+                if moving:
+                    moving[1][0] += 1 #takes one more step in defined direction
 
     # Draws screen and boards
     screen.fill((0, 0, 0))
