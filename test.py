@@ -14,67 +14,38 @@ move_steps = 20 #frames required for each movement
 beginning_mov_parcel = 3 #size (1/x %) of the beginning parcel in which a movement it can still be cancelled
 
 class Board:
-    def __init__(self, cols, rows, field = None, char = None, obj = None):
+    def __init__(self, cols, rows, char, obj, field = None):
         self.size = (cols, rows)
 
         if field is None: #field not provided, initializes new empty field
-            field = [[None for x in range(0, cols)] for y in range(0, rows)]
+            self.field = [[None for x in range(0, cols)] for y in range(0, rows)]
         else: #field provided, checks if it's valid
             if len(field) != rows or any([len(row) != cols for row in field]):
                 raise Exception("Invalid field.")
-
-        # Looks for character in field
-        char_field = None
-        for x in range(0, cols):
-            for y in range(0, rows):
-                if field[y][x] == 1: #found character
-                    field[y][x] = 0
-                    if char_field is None:
-                        char_field = (x, y)
-                    else:
-                        raise Exception("More than one character were specified at field.")
+            else:
+                self.field = field
 
         # Checks validity of provided character position
-        if char is not None:
-            if (not isinstance(char, tuple) or len(char) != 2 or
-                not (0 <= char[0] < cols and 0 <= char[1] < rows)):
-                raise Exception("Invalid character position.")
-            if field[char[0]][char[1]] >= 3:
-                raise Exception("Character placed in obstacle.")
-
-        if char_field is None and char is None:
-            raise Exception("No character specified.")
-        elif char_field is not None and char is not None and char_field != char:
-            raise Exception("Different characters were specified.")
-        self.char = char if char is not None else char_field
-
-        # Looks for objective in field
-        obj_field = None
-        for x in range(0, cols):
-            for y in range(0, rows):
-                if field[y][x] == 2: #found objective
-                    field[y][x] = 0
-                    if obj_field is None:
-                        obj_field = (x, y)
-                    else:
-                        raise Exception("More than one objective were specified at field.")
+        if (not isinstance(char, tuple) or len(char) != 2 or
+            not self.valid_pos(*char)):
+            raise Exception("Invalid character position.")
+        elif self.field_at(*char) > 0:
+            raise Exception("Character placed in obstacle or wall.")
+        else:
+            self.char = char
 
         # Checks validity of provided objective position
-        if obj is not None:
-            if (not isinstance(obj, tuple) or len(obj) != 2 or
-                not (0 <= obj[0] < cols and 0 <= obj[1] < rows)):
-                raise Exception("Invalid objective position.")
-            if field[obj[0]][obj[1]] >= 3:
-                raise Exception("Objective placed in obstacle.")
+        if (not isinstance(obj, tuple) or len(obj) != 2 or
+            not self.valid_pos(*obj)):
+            raise Exception("Invalid objective position.")
+        elif self.field_at(*obj) > 0:
+            raise Exception("Objective placed in obstacle or wall.")
+        else:
+            self.obj = obj
 
-        if obj_field is None and obj is None:
-            raise Exception("No objective specified.")
-        elif obj_field is not None and obj is not None and obj_field != obj:
-            raise Exception("Different objectives were specified.")
-        self.obj = obj if obj is not None else obj_field
-
-        self.field = field
-
+    # Access field at given position
+    def field_at(self, x, y):
+        return self.field[y][x]
 
     # Check if the (x,y) position is inside field
     def valid_pos(self, x, y):
@@ -82,7 +53,7 @@ class Board:
 
     # Check if the (x,y) position can be occupied by the character
     def can_move(self, x, y):
-        return (self.valid_pos(x, y) and self.field[y][x] <= 2)
+        return (self.valid_pos(x, y) and self.field_at(x, y) < 0)
 
     # Check if the position in the given direction can be occupied by the character
     def can_move_dir(self, direction):
@@ -114,17 +85,12 @@ class Board:
             (start_y + cel_size*self.size[1]) > screen.get_size()[1]):
            raise Exception("Board can't fit window screen.")
 
-        neighboorhood = [(-1, -1), (0, -1), (+1, -1), (+1, 0),
-                         (+1, +1), (0, +1), (-1, +1), (-1, 0)]
 
         # Draws tiles
         for t_x in range(0, self.size[0]):
             for t_y in range(0, self.size[1]):
                 # Checks the tile type of the 8 neighboors, None if end of Board
-                neigh_pos = list(map(lambda dx_dy : (t_x + dx_dy[0], t_y + dx_dy[1]), neighboorhood))
-                neighboors = list(map(lambda pos: self.field[pos[1]][pos[0]] if self.valid_pos(*pos) else None, neigh_pos))
-
-                img = tileset[self.field[t_y][t_x]](neighboors) #acess the tileset, informing the neighboor tiles
+                img = tileset[self.field_at(t_x, t_y)] #access the tileset
                 screen.blit(img, (start_x + t_x*cel_size, start_y + t_y*cel_size)) #draws the tile
 
 
@@ -153,15 +119,19 @@ class Board:
         #pg.draw.rect(screen, (255, 0, 0), pg.Rect(cx, cy, cel_size, cel_size))
 
 
-field1 = [[0, 0, 2],
-          [0, 3, 3],
-          [1, 3, 3]]
+field1 = [[-1, -1, -1],
+          [-1,  1,  1],
+          [-1,  1,  1]]
+char1 = (0, 2)
+obj1 = (2, 0)
 
-field2 = [[2, 3, 3],
-          [0, 3, 3],
-          [0, 0, 1]]
+field2 = [[-1,  1,  1],
+          [-1,  1,  1],
+          [-1, -1, -1]]
+char2 = (2, 2)
+obj2 = (0, 0)
 
-boards = [Board(3, 3, field1, (0,2)), Board(3, 3, field2, (2,2))]
+boards = [Board(3, 3, char1, obj1, field1), Board(3, 3, char2, obj2, field2)]
 
 # Main loop
 while not done:
@@ -212,8 +182,8 @@ while not done:
     # Draws screen and boards
     screen.fill((0, 0, 0))
     tileset = {
-        3:lambda neighboors : pg.image.load('img/dungeon_tileset/wall_01.png'),
-        0:lambda neighboors : pg.image.load('img/dungeon_tileset/floor_01.png')
+         1: pg.image.load('img/dungeon_tileset/wall_01.png'),
+        -1: pg.image.load('img/dungeon_tileset/floor_01.png')
     }
     boards[0].draw(50, 50, 16, moving, tileset)
     boards[1].draw(550, 50, 16, moving, tileset)
