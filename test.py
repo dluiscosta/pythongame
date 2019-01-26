@@ -14,8 +14,75 @@ move_steps = 16 #frames required for each movement
 beginning_mov_parcel = 3 #size (1/x %) of the beginning parcel in which a movement it can still be cancelled
 moving_sprite_frames = 20 #during movement, the amount of frames that will exhibit the same image before using the next on the sprite
 
+
+class Character:
+    def __init__(self, sprites, draw_offset = (0, 0)):
+        self.position = None
+        self.board = None
+        self.sprites = sprites
+        self.draw_offset = draw_offset
+        self.facing = pg.K_DOWN
+        self.been_moving = 0 #frames
+
+    # Check if the position in the given direction can be occupied by the character
+    def can_move_dir(self, direction):
+        if self.board == None:
+            raise Exception("Can't move if not on a board.")
+
+        if direction == pg.K_UP:
+            return self.board.can_occupy(self.position[0], self.position[1]-1)
+        elif direction == pg.K_DOWN:
+            return self.board.can_occupy(self.position[0], self.position[1]+1)
+        elif direction == pg.K_LEFT:
+            return self.board.can_occupy(self.position[0]-1, self.position[1])
+        elif direction == pg.K_RIGHT:
+            return self.board.can_occupy(self.position[0]+1, self.position[1])
+        else:
+            raise Exception("Invalid direction.")
+
+    # Updates the character position, if possible
+    def move_char(self, direction):
+        if self.can_move_dir(direction):
+            new_position = list(self.position)
+            if moving[0] == pg.K_UP: new_position[1] -= 1
+            elif moving[0] == pg.K_DOWN: new_position[1] += 1
+            elif moving[0] == pg.K_LEFT: new_position[0] -= 1
+            elif moving[0] == pg.K_RIGHT: new_position[0] += 1
+            self.position = tuple(new_position)
+
+    def draw(self, start_x, start_y):
+        dx, dy = (0, 0) #delta from current movement
+        img = self.sprites[self.facing]['idle']
+        if moving:
+            self.facing = moving[0]
+            distance_covered = int((cel_size/move_steps) * moving[1][0])
+            if moving[0] == pg.K_UP and self.can_move_dir(pg.K_UP):
+                dy = - distance_covered
+            elif moving[0] == pg.K_DOWN and self.can_move_dir(pg.K_DOWN):
+                dy = + distance_covered
+            elif moving[0] == pg.K_LEFT and self.can_move_dir(pg.K_LEFT):
+                dx = - distance_covered
+            elif moving[0] == pg.K_RIGHT and self.can_move_dir(pg.K_RIGHT):
+                dx = + distance_covered
+
+            # Gets moving sprite
+            moving_frame = int(self.been_moving/moving_sprite_frames)%len(self.sprites[moving[0]]['moving'])
+            img = self.sprites[moving[0]]['moving'][moving_frame]
+            self.been_moving += 1
+        else:
+            # Restarts moving frames counter
+            self.been_moving = 0
+
+        offset_x, offset_y = self.draw_offset
+        c_x = start_x + dx + offset_x
+        c_y = start_y + dy + offset_y
+        screen.blit(img, (c_x, c_y)) #draws the tile
+        # r = int(cel_size/2)
+        # pg.draw.circle(screen, (255, 0, 0), (cx+r, cy+r), r)
+
+
 class Board:
-    def __init__(self, cols, rows, char, obj, field = None):
+    def __init__(self, cols, rows, characters_pos=[], obj=None, field=None):
         self.size = (cols, rows)
 
         if field is None: #field not provided, initializes new empty field
@@ -26,14 +93,10 @@ class Board:
             else:
                 self.field = field
 
-        # Checks validity of provided character position
-        if (not isinstance(char, tuple) or len(char) != 2 or
-            not self.valid_pos(*char)):
-            raise Exception("Invalid character position.")
-        elif self.field_at(*char) > 0:
-            raise Exception("Character placed in obstacle or wall.")
-        else:
-            self.char = char
+        # Places given characters
+        self.characters = []
+        for character_pos in characters_pos:
+            self.place_character(*character_pos)
 
         # Checks validity of provided objective position
         if (not isinstance(obj, tuple) or len(obj) != 2 or
@@ -44,50 +107,39 @@ class Board:
         else:
             self.obj = obj
 
-        self.char_facing = pg.K_DOWN
-        self.been_moving = 0 #frames
+    # First place character at given position
+    def place_character(self, character, position):
+        if (not isinstance(position, tuple) or len(position) != 2
+            or not self.valid_pos(*position)):
+            raise Exception("Invalid position given for character.")
+        elif not self.can_occupy(*position):
+            raise Exception("Character can't occupy position.")
+
+        character.board = self
+        character.position = position
+        self.characters.append(character)
 
     # Access field at given position
     def field_at(self, x, y):
-        return self.field[y][x]
+        if self.valid_pos(x, y):
+            return self.field[y][x]
+        else:
+            raise Exception("Trying to access invalid field position.")
 
     # Check if the (x,y) position is inside field
     def valid_pos(self, x, y):
         return (0 <= x < self.size[0] and 0 <= y < self.size[1])
 
     # Check if the (x,y) position can be occupied by the character
-    def can_move(self, x, y):
+    def can_occupy(self, x, y):
         return (self.valid_pos(x, y) and self.field_at(x, y) < 0)
-
-    # Check if the position in the given direction can be occupied by the character
-    def can_move_dir(self, direction):
-        if direction == pg.K_UP:
-            return self.can_move(self.char[0], self.char[1]-1)
-        elif direction == pg.K_DOWN:
-            return self.can_move(self.char[0], self.char[1]+1)
-        elif direction == pg.K_LEFT:
-            return self.can_move(self.char[0]-1, self.char[1])
-        elif direction == pg.K_RIGHT:
-            return self.can_move(self.char[0]+1, self.char[1])
-        else:
-            raise Exception("Invalid direction.")
 
     # Returns an index following the order top-right-down-left
     def dir_to_idx(self, direction):
         return {pg.K_UP: 0, pg.K_RIGHT: 1, pg.K_DOWN: 2, pg.K_LEFT: 3}[direction]
 
-    # Updates the character position, if possible
-    def move_char(self, direction):
-        new_pos = list(self.char)
-        if moving[0] == pg.K_UP: new_pos[1] -= 1
-        elif moving[0] == pg.K_DOWN: new_pos[1] += 1
-        elif moving[0] == pg.K_LEFT: new_pos[0] -= 1
-        elif moving[0] == pg.K_RIGHT: new_pos[0] += 1
-        if self.can_move(*new_pos):
-            self.char = new_pos
-
     # Draws the board and the character, idle or moving (if possible for this board)
-    def draw(self, start_x, start_y, cel_size, moving, tileset, char_sprite):
+    def draw(self, start_x, start_y, cel_size, moving, tileset):
         if (start_x < 0 or start_y < 0 or
             (start_x + cel_size*self.size[0]) > screen.get_size()[0] or
             (start_y + cel_size*self.size[1]) > screen.get_size()[1]):
@@ -109,57 +161,17 @@ class Board:
 
 
         # Draws "character"
-        dx, dy = (0, 0) #delta from current movement
-        img = char_sprite[0][self.dir_to_idx(self.char_facing)][0]
-        if moving:
-            self.char_facing = moving[0]
-            distance_covered = int((cel_size/move_steps) * moving[1][0])
-            if moving[0] == pg.K_UP and self.can_move(self.char[0], self.char[1]-1):
-                dy = - distance_covered
-            elif moving[0] == pg.K_DOWN and self.can_move(self.char[0], self.char[1]+1):
-                dy = + distance_covered
-            elif moving[0] == pg.K_LEFT and self.can_move(self.char[0]-1, self.char[1]):
-                dx = - distance_covered
-            elif moving[0] == pg.K_RIGHT and self.can_move(self.char[0]+1, self.char[1]):
-                dx = + distance_covered
-
-            # Gets moving sprite
-            idx_dir = self.dir_to_idx(moving[0])
-            moving_frame = int(self.been_moving/moving_sprite_frames)%len(char_sprite[0][idx_dir][1])
-            img = char_sprite[0][idx_dir][1][moving_frame]
-            self.been_moving += 1
-        else:
-            # Restarts moving frames counter
-            self.been_moving = 0
-
-        offset_x, offset_y = char_sprite[1]
-        c_x = start_x + self.char[0]*cel_size + dx + offset_x
-        c_y = start_y + self.char[1]*cel_size + dy + offset_y
-        screen.blit(img, (c_x, c_y)) #draws the tile
-        # r = int(cel_size/2)
-        # pg.draw.circle(screen, (255, 0, 0), (cx+r, cy+r), r)
+        for character in self.characters:
+            character.draw(start_x + character.position[0]*cel_size,
+                           start_y + character.position[1]*cel_size)
 
 
-# Builds boards
-field1 = [[  0,  1,  2,  4,  5],
-          [ 10,-22,-22,-22, 15],
-          [ 20,-22, 50, 51, 45],
-          [ 30,-22, 15, 78, 78],
-          [ 40, 41, 45, 78, 78]]
-char1 = (1, 3)
-obj1 = (3, 1)
+def two_digits(n):
+    if n < 10:
+        return '0' + str(n)
+    else:
+        return str(n)
 
-field2 = [[-1,  1,  1],
-          [-1,  1,  1],
-          [-1, -1, -1]]
-char2 = (2, 2)
-obj2 = (0, 0)
-
-boards = [Board(5, 5, char1, obj1, field1), Board(3, 3, char2, obj2, field2)]
-
-# Builds dungeon tileset
-cel_size = 48
-dungeon_tileset = {}
 def three_digits(n):
     if n < 10:
         return '00' + str(n)
@@ -167,6 +179,10 @@ def three_digits(n):
         return '0' + str(n)
     else:
         return str(n)
+
+# Builds dungeon tileset
+cel_size = 48
+dungeon_tileset = {}
 for i in range(0, 100):
     img = pg.image.load('img/dungeon_tileset/dungeon_' + three_digits(i) + '.png')
     img = pg.transform.scale(img, (cel_size, cel_size))
@@ -174,17 +190,26 @@ for i in range(0, 100):
     dungeon_tileset[-i] = img
 
 # Builds char sprites
-char_sprite = ([],(-(52-cel_size)/2,-(72-12-cel_size/2)))
-def two_digits(n):
-    if n < 10:
-        return '0' + str(n)
-    else:
-        return str(n)
-for dir in ['up', 'right', 'down', 'left']:
-    idle_sprite = pg.image.load('img/characters/1/' + dir + '_' + two_digits(2) + '.png')
-    moving_sprites = [pg.image.load('img/characters/1/' + dir + '_' + two_digits(i) + '.png')
-                     for i in [1, 3]]
-    char_sprite[0].append((idle_sprite, moving_sprites))
+char_sprites = {}
+for dir in [pg.K_UP, pg.K_RIGHT, pg.K_DOWN, pg.K_LEFT]:
+    dir_str = {pg.K_UP:'up', pg.K_RIGHT:'right', pg.K_DOWN:'down', pg.K_LEFT:'left'}[dir]
+    idle_sprite = pg.image.load('img/characters/1/' + dir_str + '_' + two_digits(2) + '.png')
+    moving_sprites = [pg.image.load('img/characters/1/' + dir_str + '_' + two_digits(i) + '.png')
+                      for i in [1, 3]]
+    char_sprites[dir] = {'idle':idle_sprite, 'moving':moving_sprites}
+char_offset = (-(52-cel_size)/2,-(72-12-cel_size/2))
+
+# Builds boards
+field1 = [[  0,  1,  2,  4,  5],
+          [ 10,-22,-22,-22, 15],
+          [ 20,-22, 50, 51, 45],
+          [ 30,-22, 15, 78, 78],
+          [ 40, 41, 45, 78, 78]]
+char1_pos = (1, 3)
+char1 = Character(char_sprites, char_offset)
+obj1 = (3, 1)
+boards = [Board(5, 5, [(char1, char1_pos)], obj1, field1)]
+characters = [char1]
 
 # Main loop
 while not done:
@@ -209,24 +234,24 @@ while not done:
 
             #moving = (direction, steps taken)
             if pressed[pg.K_UP] and most_recent_mov_key == pg.K_UP:
-                if any([board.can_move_dir(pg.K_UP) for board in boards]):
+                if any([character.can_move_dir(pg.K_UP) for character in characters]):
                     moving = (pg.K_UP, [0])
             elif pressed[pg.K_DOWN] and most_recent_mov_key == pg.K_DOWN:
-                if any([board.can_move_dir(pg.K_DOWN) for board in boards]):
+                if any([character.can_move_dir(pg.K_DOWN) for character in characters]):
                     moving = (pg.K_DOWN, [0])
             elif pressed[pg.K_LEFT] and most_recent_mov_key == pg.K_LEFT:
-                if any([board.can_move_dir(pg.K_LEFT) for board in boards]):
+                if any([character.can_move_dir(pg.K_LEFT) for character in characters]):
                     moving = (pg.K_LEFT, [0])
             elif pressed[pg.K_RIGHT] and most_recent_mov_key == pg.K_RIGHT:
-                if any([board.can_move_dir(pg.K_RIGHT) for board in boards]):
+                if any([character.can_move_dir(pg.K_RIGHT) for character in characters]):
                     moving = (pg.K_RIGHT, [0])
 
         # Continues or finishes a movement
         if moving:
             if moving[1][0] == move_steps: #finishes
                 # Updates the characters positions
-                for board in boards:
-                    board.move_char(moving[0])
+                for character in characters:
+                    character.move_char(moving[0])
                 first_mov = False
                 moving = False
             else: #continues
@@ -240,8 +265,7 @@ while not done:
 
     # Draws screen and boards
     screen.fill((0, 0, 0))
-    boards[0].draw(50, 50, cel_size, moving, dungeon_tileset, char_sprite)
-    boards[1].draw(550, 50, cel_size, moving, dungeon_tileset, char_sprite)
+    boards[0].draw(50, 50, cel_size, moving, dungeon_tileset)
 
     pg.display.flip() #flips buffers, updating screen
     clock.tick(60) #waits for the time assigned for a frame
