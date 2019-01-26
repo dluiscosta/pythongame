@@ -5,6 +5,7 @@ pg.init()
 done = False #to control if the program should end
 clock = pg.time.Clock()
 screen = pg.display.set_mode((1000, 500))
+FPS = 60
 
 # Movement auxiliars
 moving = False #characters start idle
