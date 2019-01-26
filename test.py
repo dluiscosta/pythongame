@@ -199,20 +199,24 @@ obj_img = pg.image.load('img/dungeon_tileset/dungeon_' + three_digits(39) + '.pn
 dungeon_tileset['objective'] = pg.transform.scale(obj_img, (cel_size, cel_size))
 
 # Builds character
-char_sprites = {}
-for dir in [pg.K_UP, pg.K_RIGHT, pg.K_DOWN, pg.K_LEFT]:
-    dir_str = {pg.K_UP:'up', pg.K_RIGHT:'right', pg.K_DOWN:'down', pg.K_LEFT:'left'}[dir]
-    idle_sprite = pg.image.load('img/characters/1/' + dir_str + '_' + two_digits(2) + '.png')
-    moving_sprites = [pg.image.load('img/characters/1/' + dir_str + '_' + two_digits(i) + '.png')
-                      for i in [1, 3]]
-    char_sprites[dir] = {'idle':idle_sprite, 'moving':moving_sprites}
+chars_sprites = []
+for char_n in [1, 2]:
+    char_sprites = {}
+    for dir in [pg.K_UP, pg.K_RIGHT, pg.K_DOWN, pg.K_LEFT]:
+        dir_str = {pg.K_UP:'up', pg.K_RIGHT:'right', pg.K_DOWN:'down', pg.K_LEFT:'left'}[dir]
+        path = 'img/characters/' + str(char_n) + '/'
+        idle_sprite = pg.image.load(path + dir_str + '_' + two_digits(2) + '.png')
+        moving_sprites = [pg.image.load(path + dir_str + '_' + two_digits(i) + '.png')
+                          for i in [1, 3]]
+        char_sprites[dir] = {'idle':idle_sprite, 'moving':moving_sprites}
+    chars_sprites.append(char_sprites)
 char_offset = (-(52-cel_size)/2,-(72-12-cel_size/2))
 
 
 char1_pos = (1, 3)
-char1 = Character(char_sprites, char_offset)
+char1 = Character(chars_sprites[0], char_offset)
 char2_pos = (1, 1)
-char2 = copy.copy(char1)
+char2 = Character(chars_sprites[1], char_offset)
 characters = [char1, char2]
 
 # Builds boards
@@ -286,7 +290,7 @@ while not done:
                     moving[1][0] += 1 #takes one more step in defined direction
 
     # Draws screen and boards
-    screen.fill((0, 0, 0))
+    screen.fill((37, 19, 26))
     boards[0].draw(50, 50, cel_size, moving, dungeon_tileset)
     boards[1].draw(340, 50, cel_size, moving, dungeon_tileset)
 
