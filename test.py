@@ -79,7 +79,7 @@ class Board:
             self.char = new_pos
 
     # Draws the board and the character, idle or moving (if possible for this board)
-    def draw(self, start_x, start_y, cel_size, moving, tileset):
+    def draw(self, start_x, start_y, cel_size, moving, tileset, char_sprite):
         if (start_x < 0 or start_y < 0 or
             (start_x + cel_size*self.size[0]) > screen.get_size()[0] or
             (start_y + cel_size*self.size[1]) > screen.get_size()[1]):
@@ -102,6 +102,7 @@ class Board:
 
         # Draws "character"
         dx, dy = (0, 0) #delta from current movement
+        img = char_sprite[2][0]
         if moving:
             distance_covered = int((cel_size/move_steps) * moving[1][0])
             if moving[0] == pg.K_UP and self.can_move(self.char[0], self.char[1]-1):
@@ -112,13 +113,20 @@ class Board:
                 dx = - distance_covered
             elif moving[0] == pg.K_RIGHT and self.can_move(self.char[0]+1, self.char[1]):
                 dx = + distance_covered
-        cx = start_x + self.char[0]*cel_size + dx
-        cy = start_y + self.char[1]*cel_size + dy
-        r = int(cel_size/2)
-        pg.draw.circle(screen, (255, 0, 0), (cx+r, cy+r), r)
-        #pg.draw.rect(screen, (255, 0, 0), pg.Rect(cx, cy, cel_size, cel_size))
+
+            # Gets moving sprite
+            idx_dir = {pg.K_UP: 0, pg.K_RIGHT: 1, pg.K_DOWN: 2, pg.K_LEFT: 3}[moving[0]]
+            moving_frame = int((moving[1][0])/20)%len(char_sprite[idx_dir][1])
+            img = char_sprite[idx_dir][1][moving_frame]
+
+        c_x = start_x + self.char[0]*cel_size + dx
+        c_y = start_y + self.char[1]*cel_size + dy
+        screen.blit(img, (c_x, c_y)) #draws the tile
+        # r = int(cel_size/2)
+        # pg.draw.circle(screen, (255, 0, 0), (cx+r, cy+r), r)
 
 
+# Builds boards
 field1 = [[  0,  1,  2,  4,  5],
           [ 10,-22,-22,-22, 15],
           [ 20,-22, 50, 51, 45],
@@ -135,6 +143,7 @@ obj2 = (0, 0)
 
 boards = [Board(5, 5, char1, obj1, field1), Board(3, 3, char2, obj2, field2)]
 
+# Builds dungeon tileset
 dungeon_tileset = {}
 def three_digits(n):
     if n < 10:
@@ -143,11 +152,23 @@ def three_digits(n):
         return '0' + str(n)
     else:
         return str(n)
-
 for i in range(0, 100):
     img = pg.image.load('img/dungeon_tileset/dungeon_' + three_digits(i) + '.png')
     dungeon_tileset[i] = img
     dungeon_tileset[-i] = img
+
+# Builds char sprites
+char_sprite = []
+def two_digits(n):
+    if n < 10:
+        return '0' + str(n)
+    else:
+        return str(n)
+for dir in ['up', 'right', 'down', 'left']:
+    idle_sprite = pg.image.load('img/characters/1/' + dir + '_' + two_digits(2) + '.png')
+    moving_sprites = [pg.image.load('img/characters/1/' + dir + '_' + two_digits(i) + '.png')
+                     for i in [1, 3]]
+    char_sprite.append((idle_sprite, moving_sprites))
 
 # Main loop
 while not done:
@@ -197,8 +218,8 @@ while not done:
 
     # Draws screen and boards
     screen.fill((0, 0, 0))
-    boards[0].draw(50, 50, 16, moving, dungeon_tileset)
-    boards[1].draw(550, 50, 16, moving, dungeon_tileset)
+    boards[0].draw(50, 50, 16, moving, dungeon_tileset, char_sprite)
+    boards[1].draw(550, 50, 16, moving, dungeon_tileset, char_sprite)
 
     pg.display.flip() #flips buffers, updating screen
     clock.tick(60) #waits for the time assigned for a frame
