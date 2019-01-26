@@ -294,8 +294,16 @@ while not done:
     boards[0].draw(50, 50, cel_size, moving, dungeon_tileset)
     boards[1].draw(340, 50, cel_size, moving, dungeon_tileset)
 
+    # Detects achievement of goal (all objectives)
     if all([char.at_objective() for char in characters]):
-        pg.draw.rect(screen, (0, 255, 0), pg.Rect(50, 340, 530, 50))
+        # Draws green rectangle
+        pg.draw.rect(screen, (0, 66, 37), pg.Rect(50, 340, 530, 50))
+        # Writes 'THE END' centered at rectangle
+        pg.font.init()
+        myfont = pg.font.SysFont('Verdana', 30, bold=True)
+        textsurface = myfont.render('THE END', False, (255, 255, 255))
+        w, h = textsurface.get_size()
+        screen.blit(textsurface, (50 + 530/2 - w/2, 340 + 50/2 - h/2))
 
     pg.display.flip() #flips buffers, updating screen
     clock.tick(60) #waits for the time assigned for a frame
