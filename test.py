@@ -83,7 +83,7 @@ class Character:
 
 
 class Board:
-    def __init__(self, cols, rows, characters_pos=[], obj=None, field=None):
+    def __init__(self, cols, rows, characters_and_pos=[], objs_pos=[], field=None):
         self.size = (cols, rows)
 
         if field is None: #field not provided, initializes new empty field
@@ -96,17 +96,19 @@ class Board:
 
         # Places given characters
         self.characters = []
-        for character_pos in characters_pos:
-            self.place_character(*character_pos)
+        for character_and_pos in characters_and_pos:
+            self.place_character(*character_and_pos)
 
         # Checks validity of provided objective position
-        if (not isinstance(obj, tuple) or len(obj) != 2 or
-            not self.valid_pos(*obj)):
-            raise Exception("Invalid objective position.")
-        elif self.field_at(*obj) > 0:
-            raise Exception("Objective placed in obstacle or wall.")
-        else:
-            self.obj = obj
+        self.objectives_pos = []
+        for obj_pos in objs_pos:
+            if (not isinstance(obj_pos, tuple) or len(obj_pos) != 2 or
+                not self.valid_pos(*obj_pos)):
+                raise Exception("Invalid objective position.")
+            elif self.field_at(*obj_pos) > 0:
+                raise Exception("Objective placed in obstacle or wall.")
+            else:
+                self.objectives_pos.append(obj_pos)
 
     # First place character at given position
     def place_character(self, character, position):
@@ -156,10 +158,10 @@ class Board:
 
 
         # Draws objective
-        ox = start_x + self.obj[0]*cel_size
-        oy = start_y + self.obj[1]*cel_size
-        pg.draw.rect(screen, (0, 255, 0), pg.Rect(ox, oy, cel_size, cel_size))
-
+        for objective_pos in self.objectives_pos:
+            ox = start_x + objective_pos[0]*cel_size
+            oy = start_y + objective_pos[1]*cel_size
+            screen.blit(tileset['objective'], (ox, oy)) #draws the tile
 
         # Draws "character"
         for character in self.characters:
@@ -189,6 +191,8 @@ for i in range(0, 100):
     img = pg.transform.scale(img, (cel_size, cel_size))
     dungeon_tileset[i] = img
     dungeon_tileset[-i] = img
+obj_img = pg.image.load('img/dungeon_tileset/dungeon_' + three_digits(39) + '.png')
+dungeon_tileset['objective'] = pg.transform.scale(obj_img, (cel_size, cel_size))
 
 # Builds char sprites
 char_sprites = {}
@@ -209,7 +213,7 @@ field1 = [[  0,  1,  2,  4,  5],
 char1_pos = (1, 3)
 char1 = Character(char_sprites, char_offset)
 obj1 = (3, 1)
-boards = [Board(5, 5, [(char1, char1_pos)], obj1, field1)]
+boards = [Board(5, 5, [(char1, char1_pos)], [obj1], field1)]
 characters = [char1]
 
 # Main loop
