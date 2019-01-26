@@ -1,4 +1,5 @@
 import pygame as pg
+import copy
 
 # System essentials
 pg.init()
@@ -194,7 +195,7 @@ for i in range(0, 100):
 obj_img = pg.image.load('img/dungeon_tileset/dungeon_' + three_digits(39) + '.png')
 dungeon_tileset['objective'] = pg.transform.scale(obj_img, (cel_size, cel_size))
 
-# Builds char sprites
+# Builds character
 char_sprites = {}
 for dir in [pg.K_UP, pg.K_RIGHT, pg.K_DOWN, pg.K_LEFT]:
     dir_str = {pg.K_UP:'up', pg.K_RIGHT:'right', pg.K_DOWN:'down', pg.K_LEFT:'left'}[dir]
@@ -204,17 +205,30 @@ for dir in [pg.K_UP, pg.K_RIGHT, pg.K_DOWN, pg.K_LEFT]:
     char_sprites[dir] = {'idle':idle_sprite, 'moving':moving_sprites}
 char_offset = (-(52-cel_size)/2,-(72-12-cel_size/2))
 
+
+char1_pos = (1, 3)
+char1 = Character(char_sprites, char_offset)
+char2_pos = char1_pos
+char2 = copy.copy(char1)
+characters = [char1, char2]
+
 # Builds boards
 field1 = [[  0,  1,  2,  4,  5],
           [ 10,-22,-22,-22, 15],
           [ 20,-22, 50, 51, 45],
           [ 30,-22, 15, 78, 78],
           [ 40, 41, 45, 78, 78]]
-char1_pos = (1, 3)
-char1 = Character(char_sprites, char_offset)
 obj1 = (3, 1)
-boards = [Board(5, 5, [(char1, char1_pos)], [obj1], field1)]
-characters = [char1]
+field2 = [[  0,  1,  2,  4,  5],
+          [ 10,-22,-22,-22, 15],
+          [ 20,-22, 50, 51, 45],
+          [ 30,-22, 15, 78, 78],
+          [ 40, 41, 45, 78, 78]]
+obj2 = (3, 1)
+boards = [Board(5, 5, [(char1, char1_pos)], [obj1], field1),
+          Board(5, 5, [(char2, char2_pos)], [obj2], field2)]
+
+
 
 # Main loop
 while not done:
@@ -271,6 +285,7 @@ while not done:
     # Draws screen and boards
     screen.fill((0, 0, 0))
     boards[0].draw(50, 50, cel_size, moving, dungeon_tileset)
+    boards[1].draw(550, 50, cel_size, moving, dungeon_tileset)
 
     pg.display.flip() #flips buffers, updating screen
     clock.tick(60) #waits for the time assigned for a frame
