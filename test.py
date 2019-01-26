@@ -200,7 +200,7 @@ dungeon_tileset['objective'] = pg.transform.scale(obj_img, (cel_size, cel_size))
 
 # Builds character
 chars_sprites = []
-for char_n in [1, 2]:
+for char_n in [1, 5]:
     char_sprites = {}
     for dir in [pg.K_UP, pg.K_RIGHT, pg.K_DOWN, pg.K_LEFT]:
         dir_str = {pg.K_UP:'up', pg.K_RIGHT:'right', pg.K_DOWN:'down', pg.K_LEFT:'left'}[dir]
