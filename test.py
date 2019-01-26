@@ -119,11 +119,13 @@ class Board:
         #pg.draw.rect(screen, (255, 0, 0), pg.Rect(cx, cy, cel_size, cel_size))
 
 
-field1 = [[-1, -1, -1],
-          [-1,  1,  1],
-          [-1,  1,  1]]
-char1 = (0, 2)
-obj1 = (2, 0)
+field1 = [[  0,  1,  2,  4,  5],
+          [ 10,-22,-22,-22, 15],
+          [ 20,-22, 50, 51, 45],
+          [ 30,-22, 15, 78, 78],
+          [ 40, 41, 45, 78, 78]]
+char1 = (1, 3)
+obj1 = (3, 1)
 
 field2 = [[-1,  1,  1],
           [-1,  1,  1],
@@ -131,7 +133,21 @@ field2 = [[-1,  1,  1],
 char2 = (2, 2)
 obj2 = (0, 0)
 
-boards = [Board(3, 3, char1, obj1, field1), Board(3, 3, char2, obj2, field2)]
+boards = [Board(5, 5, char1, obj1, field1), Board(3, 3, char2, obj2, field2)]
+
+dungeon_tileset = {}
+def three_digits(n):
+    if n < 10:
+        return '00' + str(n)
+    elif n < 100:
+        return '0' + str(n)
+    else:
+        return str(n)
+
+for i in range(0, 100):
+    img = pg.image.load('img/dungeon_tileset/dungeon_' + three_digits(i) + '.png')
+    dungeon_tileset[i] = img
+    dungeon_tileset[-i] = img
 
 # Main loop
 while not done:
@@ -181,12 +197,8 @@ while not done:
 
     # Draws screen and boards
     screen.fill((0, 0, 0))
-    tileset = {
-         1: pg.image.load('img/dungeon_tileset/dungeon_001.png'),
-        -1: pg.image.load('img/dungeon_tileset/dungeon_022.png')
-    }
-    boards[0].draw(50, 50, 16, moving, tileset)
-    boards[1].draw(550, 50, 16, moving, tileset)
+    boards[0].draw(50, 50, 16, moving, dungeon_tileset)
+    boards[1].draw(550, 50, 16, moving, dungeon_tileset)
 
     pg.display.flip() #flips buffers, updating screen
     clock.tick(60) #waits for the time assigned for a frame
