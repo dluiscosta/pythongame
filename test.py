@@ -5,7 +5,7 @@ import copy
 pg.init()
 done = False #to control if the program should end
 clock = pg.time.Clock()
-screen = pg.display.set_mode((1000, 500))
+screen = pg.display.set_mode((630, 440))
 FPS = 60
 
 # Movement auxiliars
@@ -51,6 +51,9 @@ class Character:
             elif moving[0] == pg.K_LEFT: new_position[0] -= 1
             elif moving[0] == pg.K_RIGHT: new_position[0] += 1
             self.position = tuple(new_position)
+
+    def at_objective(self):
+        return self.position in self.board.objectives_pos
 
     def draw(self, start_x, start_y):
         dx, dy = (0, 0) #delta from current movement
@@ -208,7 +211,7 @@ char_offset = (-(52-cel_size)/2,-(72-12-cel_size/2))
 
 char1_pos = (1, 3)
 char1 = Character(char_sprites, char_offset)
-char2_pos = char1_pos
+char2_pos = (1, 1)
 char2 = copy.copy(char1)
 characters = [char1, char2]
 
@@ -219,12 +222,12 @@ field1 = [[  0,  1,  2,  4,  5],
           [ 30,-22, 15, 78, 78],
           [ 40, 41, 45, 78, 78]]
 obj1 = (3, 1)
-field2 = [[  0,  1,  2,  4,  5],
-          [ 10,-22,-22,-22, 15],
-          [ 20,-22, 50, 51, 45],
-          [ 30,-22, 15, 78, 78],
-          [ 40, 41, 45, 78, 78]]
-obj2 = (3, 1)
+field2 = [[  0,  1,  5, 78, 78],
+          [ 10,-22, 15, 78, 78],
+          [ 20,-22,  1,  2,  5],
+          [ 30,-22,-22,-22, 35],
+          [ 40, 41, 42, 44, 45]]
+obj2 = (3, 3)
 boards = [Board(5, 5, [(char1, char1_pos)], [obj1], field1),
           Board(5, 5, [(char2, char2_pos)], [obj2], field2)]
 
@@ -285,7 +288,10 @@ while not done:
     # Draws screen and boards
     screen.fill((0, 0, 0))
     boards[0].draw(50, 50, cel_size, moving, dungeon_tileset)
-    boards[1].draw(550, 50, cel_size, moving, dungeon_tileset)
+    boards[1].draw(340, 50, cel_size, moving, dungeon_tileset)
+
+    if all([char.at_objective() for char in characters]):
+        pg.draw.rect(screen, (0, 255, 0), pg.Rect(50, 340, 530, 50))
 
     pg.display.flip() #flips buffers, updating screen
     clock.tick(60) #waits for the time assigned for a frame
