@@ -8,13 +8,71 @@ clock = pg.time.Clock()
 screen = pg.display.set_mode((630, 440))
 FPS = 60
 
-# Movement auxiliars
-moving = False #characters start idle
-most_recent_mov_key = None
-first_mov = False
-move_steps = 16 #frames required for each movement
-beginning_mov_parcel = 3 #size (1/x %) of the beginning parcel in which a movement it can still be cancelled
-moving_sprite_frames = 20 #during movement, the amount of frames that will exhibit the same image before using the next on the sprite
+
+
+class Movement: #control class
+    def __init__(self, move_steps=16, beginning_mov_parcel=5, moving_sprite_frames=20):
+        self.move_steps = move_steps # frames required for each movement
+
+        # Size of the beginning parcel (in frames) in which a movement can still
+        # be cancelled
+        self.beginning_mov_parcel = beginning_mov_parcel
+
+        # During movement, the amount of frames that will exhibit the same image
+        # before using the next on the sprite
+        self.moving_sprite_frames = moving_sprite_frames
+
+        self.moving = False #characters start idle
+        self.direction = None
+        self.steps_taken = 0 #in a single movement between two cells
+
+        # First movement between 2 cells caused by a single keystrike
+        self.first_mov = None
+
+    def get_direction(self):
+        return self.direction if self.is_moving() else None
+
+    def is_moving(self):
+        return self.moving
+
+    def get_steps_taken(self):
+        return self.steps_taken if self.is_moving() else None
+
+    def get_move_steps(self):
+        return self.move_steps if self.is_moving() else None
+
+    def get_moving_sprite_frames(self):
+        return self.moving_sprite_frames
+
+    # If the movement is still at the beginning cancellable parcel (specified by
+    # beginning_mov_parcel), cancel it
+    def attempt_cancel(self):
+        if (not self.first_mov and
+            self.get_steps_taken() < self.beginning_mov_parcel):
+            self.moving = False
+
+    # Try to start a movement in a given direction
+    def attempt_movement(self, dir, first=False):
+        if (not self.is_moving() or
+            self.attempt_cancel()): #can interrupt movements that have just started
+            self.direction = dir
+            self.steps_taken = 0
+            self.moving = True
+            self.first_mov = first
+
+    # Passes one frame, taking a step or finishing the movement if it's complete
+    def continue_movement(self, characters):
+        if self.get_steps_taken() == self.move_steps: #finishes movement
+            for character in characters:
+                character.move_char(self.direction)
+            self.moving = False
+            self.first_mov = False
+            return False
+        else: #continue movement
+            if self.is_moving():
+                self.steps_taken += 1
+            return True
+
 
 
 class Character:
@@ -46,33 +104,38 @@ class Character:
     def move_char(self, direction):
         if self.can_move_dir(direction):
             new_position = list(self.position)
-            if moving[0] == pg.K_UP: new_position[1] -= 1
-            elif moving[0] == pg.K_DOWN: new_position[1] += 1
-            elif moving[0] == pg.K_LEFT: new_position[0] -= 1
-            elif moving[0] == pg.K_RIGHT: new_position[0] += 1
+            if direction == pg.K_UP: new_position[1] -= 1
+            elif direction == pg.K_DOWN: new_position[1] += 1
+            elif direction == pg.K_LEFT: new_position[0] -= 1
+            elif direction == pg.K_RIGHT: new_position[0] += 1
             self.position = tuple(new_position)
 
     def at_objective(self):
         return self.position in self.board.objectives_pos
 
+
+    def am_moving(self):
+        return mov_handler.is_moving() and self.can_move_dir(mov_handler.get_direction())
+
     def draw(self, start_x, start_y):
         dx, dy = (0, 0) #delta from current movement
         img = self.sprites[self.facing]['idle']
-        if moving:
-            self.facing = moving[0]
-            distance_covered = int((cel_size/move_steps) * moving[1][0])
-            if moving[0] == pg.K_UP and self.can_move_dir(pg.K_UP):
-                dy = - distance_covered
-            elif moving[0] == pg.K_DOWN and self.can_move_dir(pg.K_DOWN):
-                dy = + distance_covered
-            elif moving[0] == pg.K_LEFT and self.can_move_dir(pg.K_LEFT):
-                dx = - distance_covered
-            elif moving[0] == pg.K_RIGHT and self.can_move_dir(pg.K_RIGHT):
-                dx = + distance_covered
+        if self.am_moving():
+            self.facing = mov_handler.get_direction()
+
+            # Calculates distance already walked between two cells
+            distance_covered = int(((cel_size/mov_handler.get_move_steps()) *
+                                    mov_handler.get_steps_taken()))
+            dx, dy = {pg.K_UP:(0,-distance_covered),
+                      pg.K_DOWN:(0,+distance_covered),
+                      pg.K_LEFT:(-distance_covered,0),
+                      pg.K_RIGHT:(+distance_covered,0)}[self.facing]
 
             # Gets moving sprite
-            moving_frame = int(self.been_moving/moving_sprite_frames)%len(self.sprites[moving[0]]['moving'])
-            img = self.sprites[moving[0]]['moving'][moving_frame]
+            msf = mov_handler.get_moving_sprite_frames()
+            moving_frames = self.sprites[self.facing]['moving']
+            frame_idx = int(self.been_moving/msf)%len(moving_frames)
+            img = moving_frames[frame_idx]
             self.been_moving += 1
         else:
             # Restarts moving frames counter
@@ -81,9 +144,8 @@ class Character:
         offset_x, offset_y = self.draw_offset
         c_x = start_x + dx + offset_x
         c_y = start_y + dy + offset_y
-        screen.blit(img, (c_x, c_y)) #draws the tile
-        # r = int(cel_size/2)
-        # pg.draw.circle(screen, (255, 0, 0), (cx+r, cy+r), r)
+        screen.blit(img, (c_x, c_y)) #draws the character
+
 
 
 class Board:
@@ -146,12 +208,11 @@ class Board:
         return {pg.K_UP: 0, pg.K_RIGHT: 1, pg.K_DOWN: 2, pg.K_LEFT: 3}[direction]
 
     # Draws the board and the character, idle or moving (if possible for this board)
-    def draw(self, start_x, start_y, cel_size, moving, tileset):
+    def draw(self, start_x, start_y, cel_size, tileset):
         if (start_x < 0 or start_y < 0 or
             (start_x + cel_size*self.size[0]) > screen.get_size()[0] or
             (start_y + cel_size*self.size[1]) > screen.get_size()[1]):
            raise Exception("Board can't fit window screen.")
-
 
         # Draws tiles
         for t_x in range(0, self.size[0]):
@@ -159,7 +220,6 @@ class Board:
                 # Checks the tile type of the 8 neighboors, None if end of Board
                 img = tileset[self.field_at(t_x, t_y)] #access the tileset
                 screen.blit(img, (start_x + t_x*cel_size, start_y + t_y*cel_size)) #draws the tile
-
 
         # Draws objective
         for objective_pos in self.objectives_pos:
@@ -235,7 +295,9 @@ obj2 = (3, 3)
 boards = [Board(5, 5, [(char1, char1_pos)], [obj1], field1),
           Board(5, 5, [(char2, char2_pos)], [obj2], field2)]
 
-
+mov_handler = Movement()
+most_recent_mov_key = None
+first_mov = None
 
 # Main loop
 while not done:
@@ -247,52 +309,30 @@ while not done:
             first_mov = True
 
     twice = 1 #executes again if ends not moving after first iteration
-    while twice == 1 or (twice == 2 and not moving):
+    while twice == 1 or (twice == 2 and not mov_handler.is_moving()):
         twice += 1
 
-        # Starts a movement
+        pressed = pg.key.get_pressed()
+
+        # Attempts to start a movement
         # gives precedence to the most recently pressed key.
-        if (not moving or
-            (moving and moving[0] != most_recent_mov_key and
-             moving[1][0] < move_steps/beginning_mov_parcel)):
-             #can interrupt movements that have just started
-            pressed = pg.key.get_pressed()
+        if (most_recent_mov_key is not None and pressed[most_recent_mov_key] and
+            (not mov_handler.is_moving() or
+             mov_handler.get_direction() != most_recent_mov_key)):
+            if any([c.can_move_dir(most_recent_mov_key) for c in characters]):
+                mov_handler.attempt_movement(most_recent_mov_key, first=first_mov)
 
-            #moving = (direction, steps taken)
-            if pressed[pg.K_UP] and most_recent_mov_key == pg.K_UP:
-                if any([character.can_move_dir(pg.K_UP) for character in characters]):
-                    moving = (pg.K_UP, [0])
-            elif pressed[pg.K_DOWN] and most_recent_mov_key == pg.K_DOWN:
-                if any([character.can_move_dir(pg.K_DOWN) for character in characters]):
-                    moving = (pg.K_DOWN, [0])
-            elif pressed[pg.K_LEFT] and most_recent_mov_key == pg.K_LEFT:
-                if any([character.can_move_dir(pg.K_LEFT) for character in characters]):
-                    moving = (pg.K_LEFT, [0])
-            elif pressed[pg.K_RIGHT] and most_recent_mov_key == pg.K_RIGHT:
-                if any([character.can_move_dir(pg.K_RIGHT) for character in characters]):
-                    moving = (pg.K_RIGHT, [0])
+        # If the key was released, cancels movement if there is still time
+        if mov_handler.is_moving() and not pressed[mov_handler.get_direction()]:
+            mov_handler.attempt_cancel()
 
-        # Continues or finishes a movement
-        if moving:
-            if moving[1][0] == move_steps: #finishes
-                # Updates the characters positions
-                for character in characters:
-                    character.move_char(moving[0])
-                first_mov = False
-                moving = False
-            else: #continues
-                if not first_mov and moving[1][0] < move_steps/beginning_mov_parcel:
-                    #if it's in the beginning, checks if key still pressed
-                    pressed = pg.key.get_pressed()
-                    if not pressed[moving[0]]:
-                        moving = False # cancels movement
-                if moving:
-                    moving[1][0] += 1 #takes one more step in defined direction
+        if mov_handler.is_moving():
+            first_mov = mov_handler.continue_movement(characters)
 
     # Draws screen and boards
     screen.fill((37, 19, 26))
-    boards[0].draw(50, 50, cel_size, moving, dungeon_tileset)
-    boards[1].draw(340, 50, cel_size, moving, dungeon_tileset)
+    boards[0].draw(50, 50, cel_size, dungeon_tileset)
+    boards[1].draw(340, 50, cel_size, dungeon_tileset)
 
     # Detects achievement of goal (all objectives)
     if all([char.at_objective() for char in characters]):
