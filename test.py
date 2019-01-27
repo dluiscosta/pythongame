@@ -11,7 +11,7 @@ FPS = 60
 
 
 class Movement: #control class
-    def __init__(self, move_steps=16, beginning_mov_parcel=5, moving_sprite_frames=20):
+    def __init__(self, move_steps=16, beginning_mov_parcel=0, moving_sprite_frames=20):
         self.move_steps = move_steps # frames required for each movement
 
         # Size of the beginning parcel (in frames) in which a movement can still
@@ -297,7 +297,7 @@ boards = [Board(5, 5, [(char1, char1_pos)], [obj1], field1),
 
 mov_handler = Movement()
 most_recent_mov_key = None
-first_mov = None
+first_mov_of_keystrike = None
 
 # Main loop
 while not done:
@@ -306,7 +306,7 @@ while not done:
             done = True
         if event.type == pg.KEYDOWN and event.key in [pg.K_UP, pg.K_DOWN, pg.K_LEFT, pg.K_RIGHT]:
             most_recent_mov_key = event.key
-            first_mov = True
+            first_mov_of_keystrike = True
 
     twice = 1 #executes again if ends not moving after first iteration
     while twice == 1 or (twice == 2 and not mov_handler.is_moving()):
@@ -320,14 +320,14 @@ while not done:
             (not mov_handler.is_moving() or
              mov_handler.get_direction() != most_recent_mov_key)):
             if any([c.can_move_dir(most_recent_mov_key) for c in characters]):
-                mov_handler.attempt_movement(most_recent_mov_key, first=first_mov)
+                mov_handler.attempt_movement(most_recent_mov_key, first=first_mov_of_keystrike)
 
         # If the key was released, cancels movement if there is still time
         if mov_handler.is_moving() and not pressed[mov_handler.get_direction()]:
             mov_handler.attempt_cancel()
 
         if mov_handler.is_moving():
-            first_mov = mov_handler.continue_movement(characters)
+            first_mov_of_keystrike = mov_handler.continue_movement(characters)
 
     # Draws screen and boards
     screen.fill((37, 19, 26))
