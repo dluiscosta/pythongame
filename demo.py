@@ -1,6 +1,17 @@
 import pygame as pg
-import copy
+import copy, sys
 import movement as mv, character as chr, board as bd
+
+# Manages recording
+record = False # don't record by default
+if len(sys.argv) > 1:
+    record = sys.argv[1].lower() in ['y', 'yes', 's', 'sim', 'r', 'record', '-y', '-s', '-r']
+record_path = 'recording/'
+if record and len(sys.argv) > 2:
+    record_path = sys.argv[2].lower()
+    if record_path[-1] != '/':
+        record_path = record_path + '/'
+record_count = 0
 
 # Return how many digits a number has
 def count_digits(n):
@@ -117,6 +128,11 @@ while not done:
         textsurface = myfont.render('THE END', False, (255, 255, 255))
         w, h = textsurface.get_size()
         screen.blit(textsurface, (50 + 530/2 - w/2, 340 + 50/2 - h/2))
+
+    # Records frame, if specified
+    if record and record_count < 1000:
+        pg.image.save(screen, record_path + to_n_digits(record_count, 3) + '.png')
+        record_count += 1
 
     pg.display.flip() #flips buffers, updating screen
     clock.tick(60) #waits for the time assigned for a frame
