@@ -13,7 +13,7 @@ That can be done with pip:
 python3 -m pip install -U pygame --user
 ```
 
-Then, running the test.py file runs the game.
+Then, running the demo.py file shows a brief preview of the game.
 
 ## Copyright and License
 
