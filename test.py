@@ -2,19 +2,18 @@ import pygame as pg
 import copy
 import movement as mv, character as chr, board as bd
 
-def two_digits(n):
-    if n < 10:
-        return '0' + str(n)
-    else:
-        return str(n)
+# Return how many digits a number has
+def count_digits(n):
+    return 1 + count_digits(n%10) if n>=10 else 1
 
-def three_digits(n):
-    if n < 10:
-        return '00' + str(n)
-    elif n < 100:
-        return '0' + str(n)
+# Casts an integer to a string with n digits, filling the remainder with zeros.
+def to_n_digits(x, n):
+    cn = count_digits(x)
+    if cn > n:
+        raise Exception('Too few digits for this number.')
+        return None
     else:
-        return str(n)
+        return '0'*(n-cn) + str(x)
 
 # System essentials
 pg.init()
@@ -30,22 +29,22 @@ first_mov_of_keystrike = None
 cel_size = 48
 dungeon_tileset = {}
 for i in range(0, 100):
-    img = pg.image.load('img/dungeon_tileset/dungeon_' + three_digits(i) + '.png')
+    img = pg.image.load('img/dungeon_tileset/dungeon_' + to_n_digits(i, 3) + '.png')
     img = pg.transform.scale(img, (cel_size, cel_size))
     dungeon_tileset[i] = img
     dungeon_tileset[-i] = img
-obj_img = pg.image.load('img/dungeon_tileset/dungeon_' + three_digits(39) + '.png')
+obj_img = pg.image.load('img/dungeon_tileset/dungeon_' + to_n_digits(39, 3) + '.png')
 dungeon_tileset['objective'] = pg.transform.scale(obj_img, (cel_size, cel_size))
 
-# Builds character
+# Builds characters
 chars_sprites = []
 for char_n in [1, 5]:
     char_sprites = {}
     for dir in [pg.K_UP, pg.K_RIGHT, pg.K_DOWN, pg.K_LEFT]:
         dir_str = {pg.K_UP:'up', pg.K_RIGHT:'right', pg.K_DOWN:'down', pg.K_LEFT:'left'}[dir]
         path = 'img/characters/' + str(char_n) + '/'
-        idle_sprite = pg.image.load(path + dir_str + '_' + two_digits(2) + '.png')
-        moving_sprites = [pg.image.load(path + dir_str + '_' + two_digits(i) + '.png')
+        idle_sprite = pg.image.load(path + dir_str + '_' + to_n_digits(2, 2) + '.png')
+        moving_sprites = [pg.image.load(path + dir_str + '_' + to_n_digits(i, 2) + '.png')
                           for i in [1, 3]]
         char_sprites[dir] = {'idle':idle_sprite, 'moving':moving_sprites}
     chars_sprites.append(char_sprites)
