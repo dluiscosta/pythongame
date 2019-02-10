@@ -1,7 +1,21 @@
 import pygame as pg
+import character as chr
+import aux
 
 class Board:
-    def __init__(self, cols, rows, characters_and_pos=[], objs_pos=[], field=None):
+    @classmethod
+    def build_tileset(cls, name, cel_size):
+        dungeon_tileset = {}
+        for i in range(0, 100):
+            img = pg.image.load('img/' + name + '_tileset/' + name + '_' + aux.to_n_digits(i, 3) + '.png')
+            img = pg.transform.scale(img, (cel_size, cel_size))
+            dungeon_tileset[i] = img
+            dungeon_tileset[-i] = img
+        obj_img = pg.image.load('img/' + name + '_tileset/' + name + '_' + aux.to_n_digits(39, 3) + '.png')
+        dungeon_tileset['objective'] = pg.transform.scale(obj_img, (cel_size, cel_size))
+        cls.tileset = dungeon_tileset
+
+    def __init__(self, cols, rows, characters_pos=[], objs_pos=[], field=None):
         self.size = (cols, rows)
 
         if field is None: #field not provided, initializes new empty field
@@ -14,8 +28,9 @@ class Board:
 
         # Places given characters
         self.characters = []
-        for character_and_pos in characters_and_pos:
-            self.place_character(*character_and_pos)
+        for character_pos in characters_pos:
+            char = chr.Character.get_free_characters(1)[0]
+            self.place_character(char, character_pos)
 
         # Checks validity of provided objective position
         self.objectives_pos = []
@@ -60,7 +75,9 @@ class Board:
         return {pg.K_UP: 0, pg.K_RIGHT: 1, pg.K_DOWN: 2, pg.K_LEFT: 3}[direction]
 
     # Draws the board and the character, idle or moving (if possible for this board)
-    def draw(self, screen, start_x, start_y, cel_size, tileset):
+    def draw(self, screen, start_x, start_y, cel_size):
+        tileset = Board.tileset
+
         if (start_x < 0 or start_y < 0 or
             (start_x + cel_size*self.size[0]) > screen.get_size()[0] or
             (start_y + cel_size*self.size[1]) > screen.get_size()[1]):

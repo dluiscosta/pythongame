@@ -1,6 +1,37 @@
 import pygame as pg
+import numpy as np
+import aux
 
 class Character:
+    @classmethod
+    def generate_characters(cls, cel_size, mov_handler):
+        # Builds characters
+        cls.chars = []
+        chars_to_use = range(1, 9)
+        char_offset = (-(52-cel_size)/2,-(72-12-cel_size/2))
+        for char_n in chars_to_use:
+            char_sprites = {}
+            for dir in [pg.K_UP, pg.K_RIGHT, pg.K_DOWN, pg.K_LEFT]:
+                dir_str = {pg.K_UP:'up', pg.K_RIGHT:'right', pg.K_DOWN:'down', pg.K_LEFT:'left'}[dir]
+                path = 'img/characters/' + str(char_n) + '/'
+                idle_sprite = pg.image.load(path + dir_str + '_' + aux.to_n_digits(2, 2) + '.png')
+                moving_sprites = [pg.image.load(path + dir_str + '_' + aux.to_n_digits(i, 2) + '.png')
+                                  for i in [1, 3]]
+                char_sprites[dir] = {'idle':idle_sprite, 'moving':moving_sprites}
+            cls.chars.append(Character(char_sprites, char_offset, mov_handler))
+
+    @classmethod
+    def get_free_characters(cls, n):
+        free_characters = [char for char in cls.chars if char.board is None]
+        if n > len(free_characters):
+            raise Exception('Not enough available characters.')
+        else:
+            return np.random.choice(free_characters, n, replace=False)
+
+    @classmethod
+    def get_used_characters(cls):
+        return [char for char in cls.chars if char.board is not None]
+
     def __init__(self, sprites, draw_offset = (0, 0), mov_handler = None):
         self.position = None
         self.board = None

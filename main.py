@@ -1,19 +1,8 @@
 import pygame as pg
 import copy
 import movement as mv, character as chr, board as bd
-
-# Return how many digits a number has
-def count_digits(n):
-    return 1 + count_digits(n%10) if n>=10 else 1
-
-# Casts an integer to a string with n digits, filling the remainder with zeros.
-def to_n_digits(x, n):
-    cn = count_digits(x)
-    if cn > n:
-        raise Exception('Too few digits for this number.')
-        return None
-    else:
-        return '0'*(n-cn) + str(x)
+import pickle
+import aux
 
 # System essentials
 pg.init()
@@ -24,53 +13,23 @@ FPS = 60
 mov_handler = mv.Movement()
 most_recent_mov_key = None
 first_mov_of_keystrike = None
-
-# Builds dungeon tileset
 cel_size = 48
-dungeon_tileset = {}
-for i in range(0, 100):
-    img = pg.image.load('img/dungeon_tileset/dungeon_' + to_n_digits(i, 3) + '.png')
-    img = pg.transform.scale(img, (cel_size, cel_size))
-    dungeon_tileset[i] = img
-    dungeon_tileset[-i] = img
-obj_img = pg.image.load('img/dungeon_tileset/dungeon_' + to_n_digits(39, 3) + '.png')
-dungeon_tileset['objective'] = pg.transform.scale(obj_img, (cel_size, cel_size))
 
-# Builds characters
-chars_sprites = []
-for char_n in [1, 5]:
-    char_sprites = {}
-    for dir in [pg.K_UP, pg.K_RIGHT, pg.K_DOWN, pg.K_LEFT]:
-        dir_str = {pg.K_UP:'up', pg.K_RIGHT:'right', pg.K_DOWN:'down', pg.K_LEFT:'left'}[dir]
-        path = 'img/characters/' + str(char_n) + '/'
-        idle_sprite = pg.image.load(path + dir_str + '_' + to_n_digits(2, 2) + '.png')
-        moving_sprites = [pg.image.load(path + dir_str + '_' + to_n_digits(i, 2) + '.png')
-                          for i in [1, 3]]
-        char_sprites[dir] = {'idle':idle_sprite, 'moving':moving_sprites}
-    chars_sprites.append(char_sprites)
-char_offset = (-(52-cel_size)/2,-(72-12-cel_size/2))
+# Builds boards tileset
+bd.Board.build_tileset('dungeon', cel_size)
 
-char1_pos = (1, 3)
-char1 = chr.Character(chars_sprites[0], char_offset, mov_handler)
-char2_pos = (1, 1)
-char2 = chr.Character(chars_sprites[1], char_offset, mov_handler)
-characters = [char1, char2]
+# Builds all characters
+chr.Character.generate_characters(cel_size, mov_handler)
+
+# Load data from level
+with open('levels/01.p', 'rb') as file:
+    level = pickle.load(file)
 
 # Builds boards
-field1 = [[  0,  1,  2,  4,  5],
-          [ 10,-22,-22,-22, 15],
-          [ 20,-22, 50, 51, 45],
-          [ 30,-22, 15, 78, 78],
-          [ 40, 41, 45, 78, 78]]
-obj1 = (3, 1)
-field2 = [[  0,  1,  5, 78, 78],
-          [ 10,-22, 15, 78, 78],
-          [ 20,-22,  1,  2,  5],
-          [ 30,-22,-22,-22, 35],
-          [ 40, 41, 42, 44, 45]]
-obj2 = (3, 3)
-boards = [bd.Board(5, 5, [(char1, char1_pos)], [obj1], field1),
-          bd.Board(5, 5, [(char2, char2_pos)], [obj2], field2)]
+boards = [bd.Board(*param) for param in level]
+
+# Get all characters being used
+characters = chr.Character.get_used_characters()
 
 # Main loop
 while not done:
@@ -104,8 +63,8 @@ while not done:
 
     # Draws screen and boards
     screen.fill((37, 19, 26))
-    boards[0].draw(screen, 50, 50, cel_size, dungeon_tileset)
-    boards[1].draw(screen, 340, 50, cel_size, dungeon_tileset)
+    boards[0].draw(screen, 50, 50, cel_size)
+    boards[1].draw(screen, 340, 50, cel_size)
 
     # Detects achievement of goal (all objectives)
     if all([char.at_objective() for char in characters]):
