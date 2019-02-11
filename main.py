@@ -13,7 +13,7 @@ FPS = 60
 mov_handler = mv.Movement()
 most_recent_mov_key = None
 first_mov_of_keystrike = None
-cel_size = 48
+cel_size = 50
 
 # Builds boards tileset
 bd.Board.build_tileset('dungeon', cel_size)
@@ -63,8 +63,12 @@ while not done:
 
     # Draws screen and boards
     screen.fill((37, 19, 26))
-    boards[0].draw(screen, 50, 50, cel_size)
-    boards[1].draw(screen, 340, 50, cel_size)
+    w, h = screen.get_size()
+    sw = int(w/len(boards))
+    sh = h - 100
+    for b, board in enumerate(boards):
+        bw, bh = map(lambda x: x*cel_size, board.size)
+        board.draw(screen, b*sw + (sw - bw)/2, (sh - bh)/2, cel_size)
 
     # Detects achievement of goal (all objectives)
     if all([char.at_objective() for char in characters]):

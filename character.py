@@ -8,15 +8,20 @@ class Character:
         # Builds characters
         cls.chars = []
         chars_to_use = range(1, 9)
-        char_offset = (-(52-cel_size)/2,-(72-12-cel_size/2))
+        char_offset = (-(0.1*cel_size)/2,-(0.75*cel_size))
         for char_n in chars_to_use:
             char_sprites = {}
             for dir in [pg.K_UP, pg.K_RIGHT, pg.K_DOWN, pg.K_LEFT]:
                 dir_str = {pg.K_UP:'up', pg.K_RIGHT:'right', pg.K_DOWN:'down', pg.K_LEFT:'left'}[dir]
                 path = 'img/characters/' + str(char_n) + '/'
                 idle_sprite = pg.image.load(path + dir_str + '_' + aux.to_n_digits(2, 2) + '.png')
+                idle_sprite = pg.transform.scale(idle_sprite,
+                                                 (int(1.1*cel_size), int(1.5*cel_size)))
                 moving_sprites = [pg.image.load(path + dir_str + '_' + aux.to_n_digits(i, 2) + '.png')
                                   for i in [1, 3]]
+                moving_sprites = [pg.transform.scale(sprite,
+                                                     (int(1.1*cel_size), int(1.5*cel_size)))
+                                  for sprite in moving_sprites]
                 char_sprites[dir] = {'idle':idle_sprite, 'moving':moving_sprites}
             cls.chars.append(Character(char_sprites, char_offset, mov_handler))
 
